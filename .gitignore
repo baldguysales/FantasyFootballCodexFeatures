@@ -42,3 +42,8 @@ next-env.d.ts
 *.sln
 *.sw?
 Miniconda3-latest-MacOSX-arm64.sh
+.env
+.env.*
+*.env
+__pycache__/
+.DS_Store
