@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, Field, Column
 from sqlalchemy import Text
 
 class InjuryReportBase(SQLModel):
-    player_id: int = Field(foreign_key="player.id", index=True)
+    player_id: str = Field(foreign_key="player.gsis_id", index=True)
     status: str = Field(max_length=50)  # Using string instead of enum
     description: Optional[str] = None
     severity: Optional[int] = Field(default=None, ge=1, le=10)
@@ -16,7 +16,7 @@ class InjuryReport(InjuryReportBase, table=True):
     reported_at: datetime = Field(default_factory=datetime.utcnow)
 
 class SocialMediaPostBase(SQLModel):
-    player_id: int = Field(foreign_key="player.id", index=True)
+    player_id: str = Field(foreign_key="player.gsis_id", index=True)
     platform: str = Field(max_length=50)  # Using string instead of enum
     content: str = Field(sa_column=Column(Text))
     author: Optional[str] = None
@@ -28,7 +28,7 @@ class SocialMediaPost(SocialMediaPostBase, table=True):
     scraped_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AISummaryBase(SQLModel):
-    player_id: int = Field(foreign_key="player.id", index=True)
+    player_id: str = Field(foreign_key="player.gsis_id", index=True)
     summary_type: str = Field(max_length=50)
     content: str = Field(sa_column=Column(Text))
 

@@ -4,123 +4,80 @@ from sqlmodel import SQLModel, Field, Relationship, Column, JSON, ForeignKey, In
 from pydantic import validator
 from typing import ClassVar, Tuple
 
-from enums import PlayerPosition, Status, Conference, Division
-
 if TYPE_CHECKING:
     from .social_media_injury import SocialMediaInjury
 
-class TeamBase(SQLModel):
-    team_abbr: str = Field(primary_key=True, max_length=10, description="Team abbreviation (e.g., 'NE', 'GB')")
-    team_name: str = Field(..., description="Official team name")
-    team_id: int = Field(..., unique=True, description="NFL's team ID")
-    team_nick: Optional[str] = Field(None, description="Team nickname or mascot")
-    team_conf: str = Field(..., description="Conference (AFC or NFC)")
-    team_division: str = Field(..., description="Division within conference")
-    team_color: Optional[str] = Field(None, description="Primary team color")
-    team_color2: Optional[str] = Field(None, description="Secondary team color")
-    team_color3: Optional[str] = Field(None, description="Tertiary team color")
-    team_color4: Optional[str] = Field(None, description="Quaternary team color")
-    team_logo_wikipedia: Optional[str] = Field(None, description="URL to team logo on Wikipedia")
-    team_logo_espn: Optional[str] = Field(None, description="URL to team logo on ESPN")
-    team_wordmark: Optional[str] = Field(None, description="URL to team wordmark")
-    team_conference_logo: Optional[str] = Field(None, description="URL to conference logo")
-    team_league_logo: Optional[str] = Field(None, description="URL to NFL league logo")
-    team_logo_squared: Optional[str] = Field(None, description="URL to squared team logo")
-
-class Team(TeamBase, table=True):
-    __tablename__ = "team"
-    
-    # Relationships
-    players: List["Player"] = Relationship(back_populates="team_rel")
-    social_media_injuries: List["SocialMediaInjury"] = Relationship(back_populates="team")
-    
-    # Indexes
-    __table_args__ = (
-        Index('idx_team_conference', 'team_conf'),
-        Index('idx_team_division', 'team_division'),
-    )
-
 class PlayerBase(SQLModel):
-    """Base model for NFL players with core identification and roster information.
+    """Base model for core NFL player data from player table.
     
-    This model aligns with the database schema and includes all fields from the player table.
+    This model contains the essential player identification and attributes.
     """
-    # Core identification
-    player_id: str = Field(primary_key=True, index=True, description="Primary player identifier (GSIS ID)")
-    player_name: str = Field(..., description="Player's full name")
-    first_name: Optional[str] = Field(None, description="Player's first name")
-    last_name: Optional[str] = Field(None, description="Player's last name")
-    team: Optional[str] = Field(None, foreign_key="team.team_abbr", description="Team abbreviation")
+    # Primary identifier - GSIS ID
+    gsis_id: str = Field(primary_key=True, index=True, description="Primary GSIS identifier")
     
-    # Physical attributes
-    height: Optional[float] = Field(None, description="Player's height in inches")
-    weight: Optional[int] = Field(None, description="Player's weight in lbs")
-    birth_date: Optional[datetime] = Field(None, description="Player's date of birth")
+    # Names
+    display_name: str = Field(..., description="Player's display name")
+    common_first_name: Optional[str] = Field(None, description="Common first name")
+    first_name: Optional[str] = Field(None, description="Legal first name")
+    last_name: Optional[str] = Field(None, description="Last name")
+    short_name: Optional[str] = Field(None, description="Short name")
+    football_name: Optional[str] = Field(None, description="Football name/nickname")
+    suffix: Optional[str] = Field(None, description="Name suffix")
     
-    # Team and position information
-    position: str = Field(..., description="Player's primary position")
-    depth_chart_position: Optional[str] = Field(None, description="Current depth chart position")
-    ngs_position: Optional[str] = Field(None, description="Next Gen Stats position")
-    
-    # Status and game info
-    status: Optional[str] = Field(None, description="Current player status (e.g., ACT, SUS, RES, etc.)")
-    game_type: Optional[str] = Field(None, description="Type of game (REG, POST, PRE)")
-    status_description_abbr: Optional[str] = Field(None, description="Abbreviated status description")
-    
-    # Player identification numbers
-    jersey_number: Optional[float] = Field(None, description="Player's jersey number")
-    
-    # Career information
-    years_exp: Optional[int] = Field(None, description="Years of NFL experience")
-    entry_year: Optional[int] = Field(None, description="Year player entered the league")
-    rookie_year: Optional[float] = Field(None, description="Player's rookie year")
-    college: Optional[str] = Field(None, description="College attended")
-    
-    # Draft information
-    draft_number: Optional[float] = Field(None, description="Draft pick number")
-    draft_club: Optional[str] = Field(None, description="Team that drafted the player")
-    
-    # Age and season context
-    age: Optional[float] = Field(None, description="Player's age")
-    season: Optional[int] = Field(None, ge=1920, description="Current season year")
-    week: Optional[int] = Field(None, ge=1, le=22, description="Current week of the season")
-    
-    # External IDs and references
-    pff_id: Optional[str] = Field(None, index=True, description="Pro Football Focus ID")
-    pfr_id: Optional[str] = Field(None, index=True, description="Pro Football Reference ID")
-    fantasy_data_id: Optional[str] = Field(None, index=True, description="Fantasy Data ID")
-    sleeper_id: Optional[str] = Field(None, index=True, description="Sleeper ID")
-    espn_id: Optional[str] = Field(None, index=True, description="ESPN ID")
-    sportradar_id: Optional[str] = Field(None, index=True, description="SportRadar ID")
-    yahoo_id: Optional[str] = Field(None, index=True, description="Yahoo ID")
-    rotowire_id: Optional[str] = Field(None, index=True, description="Rotowire ID")
+    # External IDs
     esb_id: Optional[str] = Field(None, index=True, description="ESB ID")
-    gsis_it_id: Optional[str] = Field(None, index=True, description="GSIS ID")
+    nfl_id: Optional[str] = Field(None, index=True, description="NFL ID")
+    pfr_id: Optional[str] = Field(None, index=True, description="Pro Football Reference ID")
+    pff_id: Optional[str] = Field(None, index=True, description="Pro Football Focus ID")
+    otc_id: Optional[str] = Field(None, index=True, description="Over The Cap ID")
+    espn_id: Optional[str] = Field(None, index=True, description="ESPN ID")
     smart_id: Optional[str] = Field(None, index=True, description="SMART ID")
     
-    # Player media
-    headshot_url: Optional[str] = Field(None, description="URL to player's headshot")
-    football_name: Optional[str] = Field(None, description="Player's nickname or preferred name")
+    # Physical attributes
+    birth_date: Optional[datetime] = Field(None, description="Birth date")
+    height: Optional[float] = Field(None, description="Height in inches")
+    weight: Optional[float] = Field(None, description="Weight in pounds")
+    headshot: Optional[str] = Field(None, description="Headshot URL")
+    
+    # Position information
+    position_group: Optional[str] = Field(None, description="Position group")
+    position: Optional[str] = Field(None, description="Primary position")
+    ngs_position_group: Optional[str] = Field(None, description="NGS position group")
+    ngs_position: Optional[str] = Field(None, description="NGS position")
+    
+    # College and education
+    college_name: Optional[str] = Field(None, description="College name")
+    college_conference: Optional[str] = Field(None, description="College conference")
+    
+    # Career information
+    jersey_number: Optional[int] = Field(None, description="Jersey number")
+    rookie_season: Optional[int] = Field(None, description="Rookie season")
+    last_season: Optional[int] = Field(None, description="Last active season")
+    years_of_experience: Optional[int] = Field(None, description="Years of NFL experience")
+    
+    # Current team and status
+    latest_team: Optional[str] = Field(None, description="Most recent team")
+    status: Optional[str] = Field(None, description="Player status")
+    ngs_status: Optional[str] = Field(None, description="NGS status")
+    ngs_status_short_description: Optional[str] = Field(None, description="NGS status description")
+    
+    # PFF specific
+    pff_position: Optional[str] = Field(None, description="PFF position")
+    pff_status: Optional[str] = Field(None, description="PFF status")
+    
+    # Draft information
+    draft_year: Optional[float] = Field(None, description="Draft year")
+    draft_round: Optional[float] = Field(None, description="Draft round")
+    draft_pick: Optional[float] = Field(None, description="Draft pick number")
+    draft_team: Optional[str] = Field(None, description="Team that drafted player")
+
 
 class Player(PlayerBase, table=True):
-    """Player model representing an NFL player with all roster and statistical information."""
+    """Player model for core NFL player information."""
     __tablename__ = "player"
     
-    # Timestamps
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        nullable=False,
-        description="Timestamp when the record was created"
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
-        nullable=False,
-        description="Timestamp when the record was last updated"
-    )
-    
-    # Relationships
-    team_rel: Optional[Team] = Relationship(back_populates="players")
+    # Relationships - Updated to use new roster model
+    roster_entries: List["PlayerWeekRoster"] = Relationship(back_populates="player")
     week_stats: List["PlayerWeekStats"] = Relationship(back_populates="player")
     week_points: List["PlayerWeekPoints"] = Relationship(back_populates="player")
     injury_reports: List["InjuryReport"] = Relationship(back_populates="player")
@@ -130,16 +87,14 @@ class Player(PlayerBase, table=True):
     fantasy_rosters: List["FantasyRoster"] = Relationship(back_populates="players")
     props: List["PlayerProp"] = Relationship(back_populates="player")
     decisions: List["UserDecision"] = Relationship(back_populates="player")
-    roster_entries: List["WeeklyRoster"] = Relationship(back_populates="player")
     
     # Indexes for better query performance
     __table_args__: ClassVar[Tuple] = (
-        # Index on commonly filtered fields
-        Index('ix_player_team', 'team_abbr'),
+        Index('ix_player_latest_team', 'latest_team'),
         Index('ix_player_position', 'position'),
-        Index('ix_player_season_week', 'season', 'week'),
-        # Partial index for active players
-        Index('ix_active_players', 'status', postgresql_where="status = 'ACTIVE'"),
+        Index('ix_player_status', 'status'),
+        Index('ix_player_rookie_season', 'rookie_season'),
+        Index('ix_player_last_season', 'last_season'),
     )
     
     @validator('jersey_number', 'height', 'rookie_year', 'draft_number', 'age', pre=True)

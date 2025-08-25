@@ -35,7 +35,7 @@ class SocialMediaInjury(Base, BaseModel):
     confidence_score = Column(Integer, default=0)
     
     # Foreign keys to link with existing tables
-    player_id = Column(String(50), ForeignKey('player.player_id'), nullable=True)
+    player_id = Column(String(50), ForeignKey('player.gsis_id'), nullable=True)
     team_abbr = Column(String(10), ForeignKey('team.team_abbr'), nullable=True)
     
     # Engagement metrics

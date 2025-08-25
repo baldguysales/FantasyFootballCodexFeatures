@@ -15,7 +15,7 @@ class BettingOdds(BettingOddsBase, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class PlayerPropBase(SQLModel):
-    player_id: int = Field(foreign_key="player.id", index=True)
+    player_id: str = Field(foreign_key="player.gsis_id", index=True)
     game_id: int = Field(foreign_key="game.id", index=True)
     prop_type: str = Field(max_length=100)
     line: Optional[str] = None

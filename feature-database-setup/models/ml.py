@@ -7,7 +7,7 @@ from .enums import DecisionType
 
 class UserDecisionBase(SQLModel):
     user_id: int = Field(foreign_key="user.id", index=True)
-    player_id: int = Field(foreign_key="player.id", index=True)
+    player_id: str = Field(foreign_key="player.gsis_id", index=True)
     decision_type: DecisionType
     week: int = Field(ge=1, le=22)
     season: int = Field(ge=1920)

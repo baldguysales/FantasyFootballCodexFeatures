@@ -10,7 +10,7 @@ class PlayerWeekStatsBase(SQLModel):
     All numeric fields are initialized to 0 by default.
     """
     # Core identifiers
-    player_id: str = Field(foreign_key="player.player_id", index=True, description="Player identifier")
+    player_id: str = Field(foreign_key="player.gsis_id", index=True, description="Player identifier")
     player_name: str = Field(description="Player's full name")
     player_display_name: Optional[str] = Field(default=None, description="Player's display name")
     position: str = Field(description="Player's position")
@@ -150,7 +150,7 @@ class PlayerWeekPointsBase(SQLModel):
     No calculations are performed here as the points are provided by the nfl_data_py package.
     """
     # Core identifiers
-    player_id: str = Field(foreign_key="player.player_id", index=True, description="Player identifier")
+    player_id: str = Field(foreign_key="player.gsis_id", index=True, description="Player identifier")
     season: int = Field(ge=1920, description="NFL season year")
     week: int = Field(ge=1, le=22, description="Week of the season")
     
