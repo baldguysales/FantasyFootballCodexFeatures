@@ -44,10 +44,10 @@ async def get_db():
 
 ## Model Usage
 
-### Importing Models
-
+### Importing Models (UPDATED)
 ```python
 from models.teams_players import Team, Player
+from models.roster import PlayerWeekRoster  # NEW MODEL
 from models.social_media_injury import SocialMediaInjury, SocialMediaInjuryMatch
 ```
 
@@ -60,13 +60,33 @@ async with get_db() as session:
     teams = result.scalars().all()
 ```
 
-#### Get Players by Team
+#### Get Players by Team (UPDATED - Uses new relationships)
+```python
+async with get_db() as session:
+    # Option 1: Query core player data
+    result = await session.execute(
+        select(Player).where(Player.latest_team == "NE")
+    )
+    patriots_players = result.scalars().all()
+    
+    # Option 2: Query current roster (specific week/season)
+    result = await session.execute(
+        select(PlayerWeekRoster)
+        .where(PlayerWeekRoster.team == "NE")
+        .where(PlayerWeekRoster.season == 2024)
+        .where(PlayerWeekRoster.week == 16)
+    )
+    current_roster = result.scalars().all()
+```
+#### Get Player with Roster History (NEW EXAMPLE)
 ```python
 async with get_db() as session:
     result = await session.execute(
-        select(Player).where(Player.team == "NE")
+        select(Player)
+        .options(selectinload(Player.roster_entries))
+        .where(Player.gsis_id == "00-0036355")
     )
-    patriots_players = result.scalars().all()
+    player_with_history = result.scalar_one()
 ```
 
 #### Get Recent Injuries
@@ -85,8 +105,7 @@ async with get_db() as session:
 
 ## Common Operations
 
-### Creating Records
-
+### Creating Records (UPDATED)
 ```python
 async def create_player(player_data: dict):
     async with get_db() as session:
@@ -95,15 +114,22 @@ async def create_player(player_data: dict):
         await session.commit()
         await session.refresh(player)
         return player
+
+async def create_roster_entry(roster_data: dict):
+    async with get_db() as session:
+        roster_entry = PlayerWeekRoster(**roster_data)
+        session.add(roster_entry)
+        await session.commit()
+        await session.refresh(roster_entry)
+        return roster_entry
 ```
 
-### Updating Records
-
+### Updating Records (CRITICAL - Primary Key Changed)
 ```python
-async def update_player(player_id: str, update_data: dict):
+async def update_player(gsis_id: str, update_data: dict):  # Changed from player_id
     async with get_db() as session:
         result = await session.execute(
-            select(Player).where(Player.player_id == player_id)
+            select(Player).where(Player.gsis_id == gsis_id)  # Updated field
         )
         player = result.scalar_one_or_none()
         if player:

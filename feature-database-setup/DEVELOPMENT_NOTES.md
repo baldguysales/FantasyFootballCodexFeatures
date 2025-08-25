@@ -21,13 +21,24 @@ This document contains internal development notes, architecture decisions, and i
 - Contains team metadata, colors, and logo URLs
 
 ### Player Table
-- Primary Key: `player_id` (VARCHAR)
-- Foreign Key: `team_abbr` references Team.team_abbr
-- Contains player details, stats, and external service IDs
+- Primary Key: `gsis_id` (VARCHAR(50)) - CHANGED from player_id
+- Contains core player identification and attributes only
+- Removed weekly roster data (now in separate table)
+
+### PlayerWeekRoster Table (NEW)
+- Primary Key: `id` (INTEGER, auto-increment)
+- Foreign Key: `player_id` references Player.gsis_id
+- Contains weekly roster status, position, team assignments
+- Unique constraint on (player_id, season, week)
+- Indexes on: player_id, team, season, week combinations
 
 ### Social Media Injury Tables
 - `social_media_injury`: Stores injury reports from social media
 - `social_media_injury_matches`: Tracks manual matches between reports and players
+
+### Social Media Injury Tables (FOREIGN KEY UPDATED)
+- `social_media_injury`: Foreign key now references Player.gsis_id
+- `social_media_injury_matches`: Foreign key now references Player.gsis_id
 
 ## Model Architecture
 
@@ -35,11 +46,18 @@ This document contains internal development notes, architecture decisions, and i
 - `BaseModel`: Common fields and methods for all models
 - `Base`: SQLAlchemy declarative base
 
-### Team and Player Models
-- `TeamBase`: Base fields for teams
-- `Team`: Table model with relationships
-- `PlayerBase`: Base fields for players
-- `Player`: Table model with relationships and validation
+### Team and Player Models (UPDATED)
+- `TeamBase`: Base fields for teams (unchanged)
+- `Team`: Table model with relationships (unchanged)
+- `PlayerBase`: Base fields for core player data only (simplified)
+- `Player`: Core player identification model with gsis_id primary key
+- `PlayerWeekRosterBase`: Base fields for weekly roster data (NEW)
+- `PlayerWeekRoster`: Weekly roster tracking model (NEW)
+
+### Breaking Changes
+- All foreign key references to Player must use gsis_id instead of player_id
+- Player model no longer contains weekly roster data
+- New PlayerWeekRoster model handles all season/week-specific data
 
 ### Social Media Models
 - `SocialMediaInjury`: Stores injury reports
