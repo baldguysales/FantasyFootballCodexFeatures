@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, ClassVar, Tuple
 from sqlmodel import SQLModel, Field, Relationship, Column, JSON, ForeignKey, UniqueConstraint
-from sqlalchemy import String, Index
+from sqlalchemy import String, Index, select, or_, and_, desc  # Add the SQL functions if you want to use the helper functions I provided
 from pydantic import validator, HttpUrl
 class PlayerWeekStatsBase(SQLModel):
     """Base model for weekly player statistics.
@@ -190,3 +190,244 @@ class PlayerWeekPoints(PlayerWeekPointsBase, table=True):
     
     # Relationships
     player: "Player" = Relationship(back_populates="week_points")
+
+class ScheduleBase(SQLModel):
+    """Base model for NFL game schedule and results data.
+    
+    This model stores historical game information for performance analysis,
+    including scores, betting lines, and game metadata.
+    """
+    # Game identification
+    game_id: str = Field(primary_key=True, description="Unique game identifier")
+    old_game_id: Optional[int] = Field(None, description="Legacy game ID")
+    gsis: Optional[float] = Field(None, description="GSIS game identifier")
+    pff: Optional[float] = Field(None, description="Pro Football Focus game ID")
+    espn: Optional[float] = Field(None, description="ESPN game ID")
+    ftn: Optional[float] = Field(None, description="FantasyPros game ID")
+    pfr: Optional[str] = Field(None, description="Pro Football Reference game ID")
+    nfl_detail_id: Optional[str] = Field(None, description="NFL detail ID")
+    
+    # Game timing and details
+    season: int = Field(ge=1920, description="NFL season year")
+    week: int = Field(ge=1, le=22, description="Week of the season")
+    game_type: Optional[str] = Field(None, description="Game type (REG, POST, PRE)")
+    gameday: Optional[str] = Field(None, description="Game day")
+    weekday: Optional[str] = Field(None, description="Day of the week")
+    gametime: Optional[str] = Field(None, description="Game time")
+    location: Optional[str] = Field(None, description="Game location")
+    
+    # Teams
+    home_team: str = Field(..., description="Home team abbreviation")
+    away_team: str = Field(..., description="Away team abbreviation")
+    
+    # Game results
+    home_score: Optional[float] = Field(None, description="Home team final score")
+    away_score: Optional[float] = Field(None, description="Away team final score")
+    result: Optional[float] = Field(None, description="Game result from home team perspective")
+    overtime: Optional[float] = Field(None, description="Overtime indicator")
+    
+    # Betting information
+    total: Optional[float] = Field(None, description="Total points line")
+    away_moneyline: Optional[float] = Field(None, description="Away team moneyline")
+    
+    # Rest days
+    home_rest: Optional[int] = Field(None, description="Days of rest for home team")
+    away_rest: Optional[int] = Field(None, description="Days of rest for away team")
+
+
+class Schedule(ScheduleBase, table=True):
+    """NFL game schedule and historical results.
+    
+    This table stores comprehensive game information for historical analysis
+    and player performance evaluation against specific teams.
+    """
+    __tablename__ = "schedule"
+    
+    # Table constraints and indexes
+    __table_args__: ClassVar[Tuple] = (
+        # Ensure unique games per season/week/teams combination
+        UniqueConstraint('season', 'week', 'home_team', 'away_team', 
+                        name='uq_schedule_season_week_teams'),
+        # Indexes for common query patterns
+        Index('ix_schedule_season_week', 'season', 'week'),
+        Index('ix_schedule_home_team_season', 'home_team', 'season'),
+        Index('ix_schedule_away_team_season', 'away_team', 'season'),
+        Index('ix_schedule_teams', 'home_team', 'away_team'),
+        Index('ix_schedule_gameday', 'gameday'),
+    )
+    
+    # Timestamps for tracking
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="When this schedule entry was created"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+        description="When this schedule entry was last updated"
+    )
+    
+    # Helper methods for analysis
+    def get_opponent(self, team: str) -> Optional[str]:
+        """Get the opponent team for a given team."""
+        if team == self.home_team:
+            return self.away_team
+        elif team == self.away_team:
+            return self.home_team
+        return None
+    
+    def is_home_game(self, team: str) -> Optional[bool]:
+        """Check if the game was at home for the given team."""
+        if team == self.home_team:
+            return True
+        elif team == self.away_team:
+            return False
+        return None
+    
+    def get_team_score(self, team: str) -> Optional[float]:
+        """Get the score for a specific team."""
+        if team == self.home_team:
+            return self.home_score
+        elif team == self.away_team:
+            return self.away_score
+        return None
+    
+    def get_opponent_score(self, team: str) -> Optional[float]:
+        """Get the opponent's score for a given team."""
+        if team == self.home_team:
+            return self.away_score
+        elif team == self.away_team:
+            return self.home_score
+        return None
+    
+    def did_team_win(self, team: str) -> Optional[bool]:
+        """Check if the given team won the game."""
+        team_score = self.get_team_score(team)
+        opponent_score = self.get_opponent_score(team)
+        
+        if team_score is None or opponent_score is None:
+            return None
+            
+        return team_score > opponent_score
+    
+    def get_point_differential(self, team: str) -> Optional[float]:
+        """Get point differential for a team (positive = won by X, negative = lost by X)."""
+        team_score = self.get_team_score(team)
+        opponent_score = self.get_opponent_score(team)
+        
+        if team_score is None or opponent_score is None:
+            return None
+            
+        return team_score - opponent_score
+
+
+# API schemas for frontend/API consumption
+class ScheduleRead(ScheduleBase):
+    """Schema for reading schedule data via API"""
+    created_at: datetime
+    updated_at: datetime
+
+
+class ScheduleCreate(ScheduleBase):
+    """Schema for creating new schedule entries"""
+    pass
+
+
+class ScheduleUpdate(SQLModel):
+    """Schema for updating schedule entries"""
+    home_score: Optional[float] = None
+    away_score: Optional[float] = None
+    result: Optional[float] = None
+    overtime: Optional[float] = None
+    total: Optional[float] = None
+    away_moneyline: Optional[float] = None
+
+
+# Helper functions for schedule analysis
+def get_team_schedule(session, team: str, season: int, week: Optional[int] = None):
+    """Get schedule for a specific team and season."""
+    from sqlalchemy import select, or_
+    
+    query = select(Schedule).where(
+        or_(Schedule.home_team == team, Schedule.away_team == team),
+        Schedule.season == season
+    )
+    
+    if week:
+        query = query.where(Schedule.week == week)
+    
+    return session.execute(query)
+
+
+def get_head_to_head_history(session, team1: str, team2: str, seasons: Optional[int] = 5):
+    """Get head-to-head history between two teams."""
+    from sqlalchemy import select, or_, and_, desc
+    
+    query = select(Schedule).where(
+        or_(
+            and_(Schedule.home_team == team1, Schedule.away_team == team2),
+            and_(Schedule.home_team == team2, Schedule.away_team == team1)
+        )
+    )
+    
+    if seasons:
+        from datetime import datetime
+        cutoff_season = datetime.now().year - seasons
+        query = query.where(Schedule.season >= cutoff_season)
+    
+    query = query.order_by(desc(Schedule.season), desc(Schedule.week))
+    
+    return session.execute(query)
+
+
+def get_team_performance_vs_opponent(session, team: str, opponent: str, seasons: int = 3):
+    """Get detailed performance analysis for a team against a specific opponent."""
+    from sqlalchemy import select, or_, and_
+    
+    query = select(Schedule).where(
+        or_(
+            and_(Schedule.home_team == team, Schedule.away_team == opponent),
+            and_(Schedule.away_team == team, Schedule.home_team == opponent)
+        ),
+        Schedule.season >= (datetime.now().year - seasons),
+        Schedule.home_score.isnot(None),  # Only completed games
+        Schedule.away_score.isnot(None)
+    ).order_by(Schedule.season.desc(), Schedule.week.desc())
+    
+    games = session.execute(query).scalars().all()
+    
+    # Calculate performance metrics
+    wins = 0
+    total_games = len(games)
+    total_points_for = 0
+    total_points_against = 0
+    home_games = 0
+    home_wins = 0
+    
+    for game in games:
+        is_home = game.is_home_game(team)
+        team_score = game.get_team_score(team)
+        opponent_score = game.get_opponent_score(team)
+        
+        if game.did_team_win(team):
+            wins += 1
+            if is_home:
+                home_wins += 1
+        
+        if is_home:
+            home_games += 1
+            
+        total_points_for += team_score
+        total_points_against += opponent_score
+    
+    return {
+        "games": games,
+        "total_games": total_games,
+        "wins": wins,
+        "losses": total_games - wins,
+        "win_percentage": wins / total_games if total_games > 0 else 0,
+        "avg_points_for": total_points_for / total_games if total_games > 0 else 0,
+        "avg_points_against": total_points_against / total_games if total_games > 0 else 0,
+        "home_record": f"{home_wins}-{home_games - home_wins}" if home_games > 0 else "0-0",
+        "away_record": f"{wins - home_wins}-{(total_games - home_games) - (wins - home_wins)}"
+    }

@@ -85,7 +85,6 @@ class Player(PlayerBase, table=True):
     social_media_injuries: List["SocialMediaInjury"] = Relationship(back_populates="player")
     ai_summaries: List["AISummary"] = Relationship(back_populates="player")
     fantasy_rosters: List["FantasyRoster"] = Relationship(back_populates="players")
-    props: List["PlayerProp"] = Relationship(back_populates="player")
     decisions: List["UserDecision"] = Relationship(back_populates="player")
     
     # Indexes for better query performance
